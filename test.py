@@ -29,10 +29,10 @@ mfccs = extract_mfcc(audio, fs)
 # =========================
 # RECONOCIMIENTO
 # =========================
-mejor_palabra = None
+mejor_frase = None
 mejor_distancia = float("inf")
 
-for palabra, codebook in modelos.items():
+for frase, codebook in modelos.items():
 
     distancias = cdist(
         mfccs.T,
@@ -44,13 +44,13 @@ for palabra, codebook in modelos.items():
         np.min(distancias, axis=1)
     )
 
-    print(f"{palabra}: {distancia_promedio:.4f}")
+    print(f"{frase}: {distancia_promedio:.4f}")
 
     if distancia_promedio < mejor_distancia:
 
         mejor_distancia = distancia_promedio
-        mejor_palabra = palabra
+        mejor_frase = frase
 
 print("\n===================")
-print(f"Resultado: {mejor_palabra}")
+print(f"Resultado: {mejor_frase}")
 print("===================")

@@ -37,19 +37,19 @@ def mix_audio(audio, noise, alpha=0.02):
 # =========================
 dataset_path = "dataset"
 
-for palabra in os.listdir(dataset_path):
+for frase in os.listdir(dataset_path):
 
-    palabra_path = os.path.join(dataset_path, palabra)
+    frase_path = os.path.join(dataset_path, frase)
 
-    if not os.path.isdir(palabra_path):
+    if not os.path.isdir(frase_path):
         continue
 
-    for archivo in os.listdir(palabra_path):
+    for archivo in os.listdir(frase_path):
 
         if "_noise" in archivo:
             continue
 
-        ruta_audio = os.path.join(palabra_path, archivo)
+        ruta_audio = os.path.join(frase_path, archivo)
 
         audio, fs = librosa.load(
             ruta_audio,
@@ -73,7 +73,7 @@ for palabra in os.listdir(dataset_path):
             )
 
             salida = os.path.join(
-                palabra_path,
+                frase_path,
                 nombre
             )
 

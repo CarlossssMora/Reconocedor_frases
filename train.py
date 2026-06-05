@@ -16,21 +16,21 @@ modelos = {}
 # =========================
 # ENTRENAMIENTO
 # =========================
-for palabra in os.listdir(dataset_path):
+for frase in os.listdir(dataset_path):
 
-    palabra_path = os.path.join(dataset_path, palabra)
+    frase_path = os.path.join(dataset_path, frase)
 
-    if not os.path.isdir(palabra_path):
+    if not os.path.isdir(frase_path):
         continue
 
-    print(f"\nEntrenando: {palabra}")
+    print(f"\nEntrenando: {frase}")
 
     all_mfcc = []
 
-    for archivo in os.listdir(palabra_path):
+    for archivo in os.listdir(frase_path):
 
         ruta = os.path.join(
-            palabra_path,
+            frase_path,
             archivo
         )
 
@@ -52,7 +52,7 @@ for palabra in os.listdir(dataset_path):
         k=16
     )
 
-    modelos[palabra] = codebook
+    modelos[frase] = codebook
 
 # =========================
 # GUARDAR MODELOS

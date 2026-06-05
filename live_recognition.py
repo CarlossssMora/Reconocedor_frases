@@ -1,7 +1,7 @@
 import pickle
 import sounddevice as sd
 import numpy as np
-import librosa
+import streamlit as st
 
 from scipy.spatial.distance import cdist
 from preprocessing import preprocess_audio
@@ -11,31 +11,75 @@ from mfcc import extract_mfcc
 # CONFIGURACION
 # =========================
 FS = 16000
-DURACION = 2
+DURACION = 4
+
+# =========================
+# DICCIONARIO DE FRASES
+# llave = nombre de carpeta
+# valor = frase original
+# =========================
+frases_originales = {
+    "encender_luces_sala": "Encender las luces de la sala",
+    "apagar_luces_sala": "Apagar las luces de la sala",
+    "abrir_puerta_principal": "Abrir la puerta principal",
+    "cerrar_puerta_principal": "Cerrar la puerta principal",
+    "avanzar_adelante_ahora": "Avanzar hacia adelante ahora",
+    "retroceder_atras_ahora": "Retroceder hacia atrás ahora",
+    "girar_derecha_lentamente": "Girar a la derecha lentamente",
+    "girar_izquierda_lentamente": "Girar a la izquierda lentamente",
+    "iniciar_sistema_control": "Iniciar el sistema de control",
+    "detener_sistema_control": "Detener el sistema de control"
+}
+
+# =========================
+# INTERFAZ
+# =========================
+st.set_page_config(page_title="Reconocimiento de Frases", page_icon="🎙️")
+
+st.title("Reconocimiento de frases en vivo")
+st.write("Modelo basado en MFCC + VQ + distancia euclidiana")
+
+# =========================
+# FRASES DISPONIBLES
+# =========================
+st.subheader("Frases disponibles")
+
+st.info(
+    "\n".join([
+        f"• {frase}\n"
+        for frase in frases_originales.values()
+    ])
+)
 
 # =========================
 # CARGAR MODELOS
 # =========================
-with open("modelos/codebooks.pkl", "rb") as f:
-    modelos = pickle.load(f)
+@st.cache_resource
+def cargar_modelos():
+    with open("modelos/codebooks.pkl", "rb") as f:
+        return pickle.load(f)
+
+modelos = cargar_modelos()
+
+st.success("Modelo cargado correctamente")
 
 # =========================
-# RECONOCIMIENTO EN VIVO
+# BOTON DE GRABACION
 # =========================
-while True:
+if st.button("Grabar frase"):
 
-    input("\nPresiona ENTER para grabar")
+    with st.spinner("Grabando audio..."):
 
-    print("Grabando...")
+        audio = sd.rec(
+            int(DURACION * FS),
+            samplerate=FS,
+            channels=1,
+            dtype="float32"
+        )
 
-    audio = sd.rec(
-        int(DURACION * FS),
-        samplerate=FS,
-        channels=1,
-        dtype='float32'
-    )
+        sd.wait()
 
-    sd.wait()
+    st.info("Procesando audio...")
 
     audio = audio.flatten()
 
@@ -43,27 +87,41 @@ while True:
 
     mfccs = extract_mfcc(audio, FS)
 
-    mejor_palabra = None
+    mejor_clase = None
     mejor_distancia = float("inf")
 
-    for palabra, codebook in modelos.items():
+    resultados = {}
+
+    for clase, codebook in modelos.items():
 
         distancias = cdist(
             mfccs.T,
             codebook,
-            metric='euclidean'
+            metric="euclidean"
         )
 
         distancia_promedio = np.mean(
             np.min(distancias, axis=1)
         )
 
+        resultados[clase] = distancia_promedio
+
         if distancia_promedio < mejor_distancia:
-
             mejor_distancia = distancia_promedio
-            mejor_palabra = palabra
+            mejor_clase = clase
 
-    print("\n====================")
-    print(f"Reconocido: {mejor_palabra}")
-    print(f"Distancia: {mejor_distancia:.4f}")
-    print("====================")
+    frase_detectada = frases_originales.get(
+        mejor_clase,
+        mejor_clase
+    )
+
+    st.subheader("Resultado")
+    st.success(f"Frase reconocida: **{frase_detectada}**")
+    st.write(f"Clase detectada: `{mejor_clase}`")
+    st.write(f"Distancia: `{mejor_distancia:.4f}`")
+
+    st.subheader("Distancias por clase")
+
+    for clase, distancia in sorted(resultados.items(), key=lambda x: x[1]):
+        frase_original = frases_originales.get(clase, clase)
+        st.write(f"**{frase_original}**: {distancia:.4f}")
