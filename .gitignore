@@ -1,9 +1,21 @@
 # Entorno virtual
 venv/
+.venv/
 
 # Archivos de Python compilados
 __pycache__/
+*.pyc
 
-# Datasets
+# Datasets y audios
 dataset/
+dataset_*/
+dataset*/
 ruido/
+*.wav
+*.mp3
+*.flac
+*.m4a
+
+# Archivos temporales
+.DS_Store
+Thumbs.db

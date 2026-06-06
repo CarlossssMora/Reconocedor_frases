@@ -1,84 +1,175 @@
 import os
-import random
+import shutil
 import librosa
 import soundfile as sf
 import numpy as np
 
 # =========================
-# RUIDOS
+# DATASETS DE PERSONAS
 # =========================
-ruidos = [
-    "ruido/air_conditioner.wav",
-    "ruido/car_horn.wav",
-    "ruido/children_playing.wav",
-    "ruido/dog_bark.wav",
-    "ruido/street_music.wav"
+datasets_personas = [
+    "dataset_mike",
+    "dataset_angel",
+    "dataset_checo",
+    "dataset_juan",
+    "dataset_memo"
 ]
 
 # =========================
-# MEZCLAR AUDIO + RUIDO
+# CARPETAS DE SALIDA
 # =========================
-def mix_audio(audio, noise, alpha=0.02):
-
-    if len(noise) < len(audio):
-
-        repeat = int(np.ceil(len(audio) / len(noise)))
-
-        noise = np.tile(noise, repeat)
-
-    noise = noise[:len(audio)]
-
-    mixed = audio + alpha * noise
-
-    return mixed
+dataset_general = "dataset_general"
+dataset_general_ruido = "dataset_general_ruido"
 
 # =========================
-# RECORRER DATASET
+# RUIDOS
 # =========================
-dataset_path = "dataset"
+ruidos = {
+    "air_conditioner": "ruido/air_conditioner.wav",
+    "car_horn": "ruido/car_horn.wav",
+    "children_playing": "ruido/children_playing.wav",
+    "dog_bark": "ruido/dog_bark.wav",
+    "street_music": "ruido/street_music.wav"
+}
 
-for frase in os.listdir(dataset_path):
+# Intensidad del ruido
+alpha = 0.03
 
-    frase_path = os.path.join(dataset_path, frase)
+# =========================
+# FUNCION PARA MEZCLAR AUDIO Y RUIDO
+# =========================
+def mix_audio(audio, ruido, alpha=0.03):
 
-    if not os.path.isdir(frase_path):
-        continue
+    if len(ruido) < len(audio):
+        repeticiones = int(np.ceil(len(audio) / len(ruido)))
+        ruido = np.tile(ruido, repeticiones)
 
-    for archivo in os.listdir(frase_path):
+    ruido = ruido[:len(audio)]
 
-        if "_noise" in archivo:
+    max_ruido = np.max(np.abs(ruido))
+    if max_ruido > 0:
+        ruido = ruido / max_ruido
+
+    audio_mezclado = audio + alpha * ruido
+
+    audio_mezclado = np.clip(audio_mezclado, -1.0, 1.0)
+
+    return audio_mezclado
+
+# =========================
+# VALIDACIONES
+# =========================
+for dataset in datasets_personas:
+    if not os.path.exists(dataset):
+        raise FileNotFoundError(f"No existe la carpeta: {dataset}")
+
+for nombre_ruido, ruta_ruido in ruidos.items():
+    if not os.path.exists(ruta_ruido):
+        raise FileNotFoundError(f"No se encontró el ruido: {ruta_ruido}")
+
+# =========================
+# CREAR DATASET GENERAL LIMPIO
+# =========================
+if os.path.exists(dataset_general):
+    shutil.rmtree(dataset_general)
+
+os.makedirs(dataset_general, exist_ok=True)
+
+print("Creando dataset general limpio...")
+
+for dataset_persona in datasets_personas:
+
+    nombre_persona = dataset_persona.replace("dataset_", "")
+
+    for clase in os.listdir(dataset_persona):
+
+        ruta_clase_origen = os.path.join(dataset_persona, clase)
+
+        if not os.path.isdir(ruta_clase_origen):
             continue
 
-        ruta_audio = os.path.join(frase_path, archivo)
+        ruta_clase_destino = os.path.join(dataset_general, clase)
+        os.makedirs(ruta_clase_destino, exist_ok=True)
+
+        for archivo in os.listdir(ruta_clase_origen):
+
+            if not archivo.lower().endswith(".wav"):
+                continue
+
+            ruta_origen = os.path.join(ruta_clase_origen, archivo)
+
+            nuevo_nombre = f"{nombre_persona}_{archivo}"
+            ruta_destino = os.path.join(ruta_clase_destino, nuevo_nombre)
+
+            shutil.copy2(ruta_origen, ruta_destino)
+
+            print(f"Copiado: {ruta_destino}")
+
+print("\nDataset general limpio creado correctamente.")
+
+# =========================
+# CREAR DATASET GENERAL CON RUIDO
+# =========================
+if os.path.exists(dataset_general_ruido):
+    shutil.rmtree(dataset_general_ruido)
+
+shutil.copytree(dataset_general, dataset_general_ruido)
+
+print("\nGenerando audios con ruido...")
+
+for clase in os.listdir(dataset_general):
+
+    ruta_clase_limpia = os.path.join(dataset_general, clase)
+    ruta_clase_ruido = os.path.join(dataset_general_ruido, clase)
+
+    if not os.path.isdir(ruta_clase_limpia):
+        continue
+
+    print(f"\nProcesando clase: {clase}")
+
+    for archivo in os.listdir(ruta_clase_limpia):
+
+        if not archivo.lower().endswith(".wav"):
+            continue
+
+        ruta_audio = os.path.join(ruta_clase_limpia, archivo)
 
         audio, fs = librosa.load(
             ruta_audio,
             sr=16000
         )
 
-        for i in range(2):
-
-            ruido_path = random.choice(ruidos)
+        for nombre_ruido, ruta_ruido in ruidos.items():
 
             ruido, _ = librosa.load(
-                ruido_path,
+                ruta_ruido,
                 sr=16000
             )
 
-            mixed = mix_audio(audio, ruido)
+            audio_con_ruido = mix_audio(
+                audio,
+                ruido,
+                alpha=alpha
+            )
 
-            nombre = archivo.replace(
+            nombre_salida = archivo.replace(
                 ".wav",
-                f"_noise{i+1}.wav"
+                f"_noise_{nombre_ruido}.wav"
             )
 
-            salida = os.path.join(
-                frase_path,
-                nombre
+            ruta_salida = os.path.join(
+                ruta_clase_ruido,
+                nombre_salida
             )
 
-            sf.write(salida, mixed, fs)
+            sf.write(
+                ruta_salida,
+                audio_con_ruido,
+                fs
+            )
 
-            print(f"Generado: {salida}")
+            print(f"Generado: {ruta_salida}")
 
-print("\nAugmentacion terminada")
+print("\nAugmentación terminada correctamente.")
+print(f"Dataset limpio: {dataset_general}")
+print(f"Dataset con ruido: {dataset_general_ruido}")
