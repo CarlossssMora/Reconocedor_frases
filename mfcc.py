@@ -2,7 +2,6 @@ import librosa
 import numpy as np
 
 def extract_mfcc(audio, fs):
-
     mfccs = librosa.feature.mfcc(
         y=audio,
         sr=fs,
@@ -11,4 +10,13 @@ def extract_mfcc(audio, fs):
         hop_length=160
     )
 
-    return mfccs
+    delta = librosa.feature.delta(mfccs)
+    delta_delta = librosa.feature.delta(mfccs, order=2)
+
+    mfcc_completo = np.vstack([
+        mfccs,
+        delta,
+        delta_delta
+    ])
+
+    return mfcc_completo
